@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f3ee">
+<title>GroomBook v0.7 AI</title>
+<style>
+:root{--bg:#f6f3ee;--card:#fff;--ink:#1f2328;--muted:#6d706f;--line:#ded8cf;--accent:#6b4f3b;--accent2:#eadfd3;--good:#2f7d52;--warn:#9b6500;--bad:#9d3c3c}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+.app{max-width:980px;margin:auto;padding-bottom:92px}header{position:sticky;top:0;z-index:10;background:rgba(246,243,238,.96);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:14px 16px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.brand{font-weight:850;font-size:22px}.sub,.small{font-size:13px;color:var(--muted)}
+main{padding:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 3px 12px rgba(0,0,0,.03)}
+button{border:0;border-radius:12px;padding:11px 14px;font-weight:750;cursor:pointer}.primary{background:var(--accent);color:#fff}.ghost{background:var(--accent2);color:var(--accent)}.danger{background:#f9e5e5;color:var(--bad)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.scan-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+h2,h3{margin:0 0 8px}.scan{border:2px dashed #d4c9bd;min-height:168px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
+.scan .icon{font-size:35px;margin-bottom:8px}.preview{width:100%;max-height:320px;object-fit:contain;border-radius:12px;margin-top:10px;border:1px solid var(--line)}
+.hidden{display:none!important}.notice{padding:10px 12px;border-radius:11px;background:#fff4d9;color:#74520a;font-size:13px;margin:10px 0}
+.good{background:#e9f5ee;color:var(--good)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.spread{justify-content:space-between}
+label{display:block;font-size:12px;font-weight:800;margin:9px 0 4px}input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:white}
+.petbox,.apptbox{border-top:1px solid var(--line);padding:13px 0}.petbox:first-child,.apptbox:first-child{border-top:0}.badge{display:inline-block;padding:5px 8px;border-radius:999px;background:#f1ede7;font-size:11px;font-weight:800;margin:3px 4px 3px 0}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(980px,100%);background:white;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:7px 6px calc(7px + env(safe-area-inset-bottom));z-index:20}
+nav button{background:none;color:var(--muted);font-size:12px}.active{color:var(--accent)!important}.screen{display:none}.screen.activeScreen{display:block}
+.spinner{width:26px;height:26px;border:3px solid #ddd;border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:10px auto}@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:700px){.scan-grid,.grid{grid-template-columns:1fr}.top{align-items:flex-start}.brand{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="top"><div><div class="brand">GroomBook <span class="sub">v0.7 AI</span></div><div class="sub">Photo → AI draft → human approval</div></div><button class="ghost" onclick="healthCheck()">AI status</button></div></header>
+<main>
+<section id="scanScreen" class="screen activeScreen">
+  <div class="card">
+    <h2>Scan into GroomBook</h2>
+    <p class="small">The AI never saves directly. It creates a draft for you to review first.</p>
+    <div class="scan-grid">
+      <div class="card scan">
+        <div class="icon">📇</div><h3>Client card</h3>
+        <div class="small">Photograph a physical card and extract client/pet details.</div>
+        <input id="cardInput" class="hidden" type="file" accept="image/*" capture="environment">
+        <button class="primary" style="margin-top:12px" onclick="cardInput.click()">Take / choose photo</button>
+      </div>
+      <div class="card scan">
+        <div class="icon">📅</div><h3>Weekly schedule</h3>
+        <div class="small">Photograph a schedule page and create draft appointments.</div>
+        <input id="scheduleInput" class="hidden" type="file" accept="image/*" capture="environment">
+        <button class="primary" style="margin-top:12px" onclick="scheduleInput.click()">Take / choose photo</button>
+      </div>
+    </div>
+  </div>
+  <div id="scanResult"></div>
+</section>
+
+<section id="scheduleScreen" class="screen">
+  <div class="card"><div class="row spread"><div><h2>Saved appointments</h2><div class="small">Approved schedule scans appear here.</div></div><button class="ghost" onclick="clearAppointments()">Clear test data</button></div></div>
+  <div id="savedAppointments" class="card"></div>
+</section>
+
+<section id="clientsScreen" class="screen">
+  <div class="card"><div class="row spread"><div><h2>Clients & pets</h2><div class="small">Approved card scans appear here.</div></div><button class="ghost" onclick="clearClients()">Clear test data</button></div></div>
+  <div id="savedClients" class="card"></div>
+</section>
+</main>
+<nav><button id="navScan" class="active" onclick="showScreen('scan')">📷<br>Scan</button><button id="navSchedule" onclick="showScreen('schedule')">📅<br>Schedule</button><button id="navClients" onclick="showScreen('clients')">🐕<br>Clients</button></nav>
+</div>
+<script>
+let lastCardImage=null,lastScheduleImage=null;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function showScreen(name){["scan","schedule","clients"].forEach(x=>{$(x+"Screen").classList.toggle("activeScreen",x===name);$("nav"+x[0].toUpperCase()+x.slice(1)).classList.toggle("active",x===name)});if(name==="schedule")renderAppointments();if(name==="clients")renderClients()}
+async function healthCheck(){try{const r=await fetch("/api/health");const j=await r.json();alert(j.aiConfigured?`AI is connected. Model: ${j.model}`:"AI server is running, but OPENAI_API_KEY is not configured.");}catch(e){alert("Could not reach the GroomBook server.");}}
+function loading(text){$("scanResult").innerHTML=`<div class="card"><div class="spinner"></div><div style="text-align:center;font-weight:800">${esc(text)}</div><div class="small" style="text-align:center;margin-top:6px">Nothing will be saved until you approve it.</div></div>`}
+async function compressImage(file){
+ return new Promise((resolve,reject)=>{
+   const img=new Image(), reader=new FileReader();
+   reader.onload=e=>img.src=e.target.result; reader.onerror=reject;
+   img.onload=()=>{
+     const max=1800, scale=Math.min(1,max/Math.max(img.width,img.height));
+     const c=document.createElement("canvas");c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+     c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+     resolve(c.toDataURL("image/jpeg",0.82));
+   };reader.readAsDataURL(file);
+ });
+}
+async function apiScan(endpoint,image){
+ const r=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({imageDataUrl:image})});
+ const j=await r.json();if(!r.ok)throw new Error(j.error||"Scan failed");return j;
+}
+$("cardInput").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{loading("Reading client card…");lastCardImage=await compressImage(f);const d=await apiScan("/api/scan-card",lastCardImage);renderCardDraft(d);}catch(err){showError(err)}e.target.value=""});
+$("scheduleInput").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;try{loading("Reading schedule…");lastScheduleImage=await compressImage(f);const d=await apiScan("/api/scan-schedule",lastScheduleImage);renderScheduleDraft(d);}catch(err){showError(err)}e.target.value=""});
+function showError(err){$("scanResult").innerHTML=`<div class="card"><h3>Scan didn't work</h3><div class="notice">${esc(err.message)}</div><div class="small">Your photo was not saved. Check AI status and try again.</div></div>`}
+function field(label,id,val){return `<div><label>${label}</label><input id="${id}" value="${esc(val||"")}"></div>`}
+function renderCardDraft(d){
+ const pets=d.pets?.length?d.pets:[{pet_name:"",breed:"",age:"",weight:"",service:"",haircut_groom_notes:"",booking_instructions:"",behavior_health_notes:""}];
+ $("scanResult").innerHTML=`<div class="card"><div class="row spread"><div><h2>Review client card</h2><div class="small">Edit anything the AI got wrong.</div></div><span class="badge">AI draft</span></div>
+ <img src="${lastCardImage}" class="preview">
+ <div class="grid">${field("Client name","cc_client",d.client_name)}${field("Phone","cc_phone",d.phone)}${field("Email","cc_email",d.email)}${field("Address","cc_address",d.address)}</div>
+ <h3 style="margin-top:16px">Pets</h3><div id="cardPets">${pets.map((p,i)=>petEditor(p,i)).join("")}</div>
+ ${d.uncertain_fields?.length?`<div class="notice"><b>Please verify:</b> ${esc(d.uncertain_fields.join(" • "))}</div>`:""}
+ <div class="row"><button class="primary" onclick="approveCard()">Approve & save</button><button class="ghost" onclick="discardDraft()">Discard</button></div></div>`;
+}
+function petEditor(p,i){return `<div class="petbox" data-pet-index="${i}"><div class="grid">${field("Pet name",`p_${i}_name`,p.pet_name)}${field("Breed",`p_${i}_breed`,p.breed)}${field("Age",`p_${i}_age`,p.age)}${field("Weight",`p_${i}_weight`,p.weight)}${field("Service",`p_${i}_service`,p.service)}${field("Haircut / groom notes",`p_${i}_groom`,p.haircut_groom_notes)}</div><label>Booking instructions</label><textarea id="p_${i}_booking">${esc(p.booking_instructions||"")}</textarea><label>Behavior / health notes</label><textarea id="p_${i}_behavior">${esc(p.behavior_health_notes||"")}</textarea></div>`}
+function approveCard(){
+ const nodes=[...document.querySelectorAll("[data-pet-index]")];
+ const rec={id:crypto.randomUUID(),client_name:$("cc_client").value,phone:$("cc_phone").value,email:$("cc_email").value,address:$("cc_address").value,card_image:lastCardImage,pets:nodes.map(n=>{const i=n.dataset.petIndex;return {pet_name:$(`p_${i}_name`).value,breed:$(`p_${i}_breed`).value,age:$(`p_${i}_age`).value,weight:$(`p_${i}_weight`).value,service:$(`p_${i}_service`).value,haircut_groom_notes:$(`p_${i}_groom`).value,booking_instructions:$(`p_${i}_booking`).value,behavior_health_notes:$(`p_${i}_behavior`).value}})};
+ const list=JSON.parse(localStorage.getItem("gb_clients")||"[]");list.push(rec);localStorage.setItem("gb_clients",JSON.stringify(list));$("scanResult").innerHTML=`<div class="card good"><b>Saved.</b> Client card and ${rec.pets.length} pet record${rec.pets.length===1?"":"s"} added.</div>`;lastCardImage=null;
+}
+function renderScheduleDraft(d){
+ const a=d.appointments||[];
+ $("scanResult").innerHTML=`<div class="card"><div class="row spread"><div><h2>Review schedule</h2><div class="small">${esc(d.schedule_date_or_week||"Schedule page")} • ${a.length} appointment${a.length===1?"":"s"} found</div></div><span class="badge">AI draft</span></div>
+ <img src="${lastScheduleImage}" class="preview">
+ <div id="draftAppts">${a.map((x,i)=>apptEditor(x,i)).join("")||'<div class="notice">No appointments were confidently found.</div>'}</div>
+ ${d.uncertain_fields?.length?`<div class="notice"><b>Please verify:</b> ${esc(d.uncertain_fields.join(" • "))}</div>`:""}
+ <div class="row"><button class="primary" onclick="approveSchedule()">Approve all</button><button class="ghost" onclick="discardDraft()">Discard</button></div></div>`;
+}
+function apptEditor(a,i){return `<div class="apptbox" data-appt-index="${i}"><div class="grid">${field("Date",`a_${i}_date`,a.date)}${field("Groomer",`a_${i}_groomer`,a.groomer)}${field("Client",`a_${i}_client`,a.client_name)}${field("Pet",`a_${i}_pet`,a.pet_name)}${field("Service",`a_${i}_service`,a.service)}${field("Capacity",`a_${i}_capacity`,a.capacity_type)}${field("Drop-off",`a_${i}_drop`,a.dropoff)}${field("Pickup",`a_${i}_pickup`,a.pickup)}</div><label>Groom instructions</label><textarea id="a_${i}_groom">${esc(a.groom_instructions||"")}</textarea><label>Booking notes</label><textarea id="a_${i}_notes">${esc(a.booking_notes||"")}</textarea></div>`}
+function approveSchedule(){
+ const nodes=[...document.querySelectorAll("[data-appt-index]")], list=JSON.parse(localStorage.getItem("gb_appts")||"[]");
+ nodes.forEach(n=>{const i=n.dataset.apptIndex;list.push({id:crypto.randomUUID(),date:$(`a_${i}_date`).value,groomer:$(`a_${i}_groomer`).value,client_name:$(`a_${i}_client`).value,pet_name:$(`a_${i}_pet`).value,service:$(`a_${i}_service`).value,capacity_type:$(`a_${i}_capacity`).value,dropoff:$(`a_${i}_drop`).value,pickup:$(`a_${i}_pickup`).value,groom_instructions:$(`a_${i}_groom`).value,booking_notes:$(`a_${i}_notes`).value,source_image:lastScheduleImage})});
+ localStorage.setItem("gb_appts",JSON.stringify(list));$("scanResult").innerHTML=`<div class="card good"><b>Saved.</b> ${nodes.length} appointment${nodes.length===1?"":"s"} added to GroomBook.</div>`;lastScheduleImage=null;
+}
+function discardDraft(){$("scanResult").innerHTML="";lastCardImage=lastScheduleImage=null}
+function renderAppointments(){const a=JSON.parse(localStorage.getItem("gb_appts")||"[]");$("savedAppointments").innerHTML=a.length?a.map(x=>`<div class="apptbox"><div class="row spread"><div><b>${esc(x.pet_name||"Unnamed pet")}</b> <span class="small">• ${esc(x.client_name)}</span></div><span class="badge">${esc(x.date||"Date ?")}</span></div><div class="small">${esc(x.groomer||"Groomer ?")} • ${esc(x.service||"Service ?")} • ${esc(x.dropoff||"Drop-off ?")}</div>${x.groom_instructions?`<div style="margin-top:6px">${esc(x.groom_instructions)}</div>`:""}</div>`).join(""):'<div class="small">No approved schedule scans yet.</div>'}
+function renderClients(){const c=JSON.parse(localStorage.getItem("gb_clients")||"[]");$("savedClients").innerHTML=c.length?c.map(x=>`<div class="petbox"><div class="row spread"><div><b>${esc(x.client_name||"Unnamed client")}</b><div class="small">${esc(x.phone||"")}</div></div>${x.card_image?`<img src="${x.card_image}" style="width:58px;height:58px;object-fit:cover;border-radius:9px">`:""}</div>${x.pets.map(p=>`<div style="margin-top:9px"><span class="badge">🐕 ${esc(p.pet_name||"Unnamed")}</span><span class="small">${esc(p.breed||"")} ${p.haircut_groom_notes?"• "+esc(p.haircut_groom_notes):""}</span></div>`).join("")}</div>`).join(""):'<div class="small">No approved client-card scans yet.</div>'}
+function clearAppointments(){if(confirm("Clear saved test appointments from this browser?")){localStorage.removeItem("gb_appts");renderAppointments()}}
+function clearClients(){if(confirm("Clear saved test clients from this browser?")){localStorage.removeItem("gb_clients");renderClients()}}
+</script>
+</body></html>
